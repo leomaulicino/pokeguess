@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokéguess - Descubra o Pokémon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- CSS Adicional: Aviso de Conquista Discreto e Elegante -->
+    <style>
+        .achievement-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #222228;
+            border: 1px solid #444;
+            border-left: 4px solid #f6d365;
+            color: #fff;
+            padding: 12px 18px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transform: translateX(150%);
+            opacity: 0;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+            z-index: 10000;
+            pointer-events: none;
+        }
+        .achievement-toast:not(.hidden) {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .ach-icon { font-size: 22px; }
+        .ach-text { display: flex; flex-direction: column; font-family: 'Poppins', sans-serif; }
+        .ach-text strong { font-size: 11px; color: #f6d365; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .ach-text span { font-size: 13px; font-weight: 600; }
+    </style>
+</head>
+<body class="no-silhouettes">
+
+    <!-- Ecrã de Autenticação (Login / Registo) -->
+    <div id="auth-screen" class="start-screen">
+        <div class="start-content" style="max-width: 400px;">
+            <div class="start-title">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Pokébola" class="pokeball-spin" style="width: 30px;">
+                <h1 style="font-size: 20px;">Área do Treinador</h1>
+            </div>
+            
+            <p id="auth-message" style="font-size: 13px; color: #ccc;">Faça login para salvar as suas conquistas na nuvem!</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+                <input type="email" id="email-input" placeholder="O seu E-mail" style="width: 100%;">
+                
+                <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                    <input type="password" id="password-input" placeholder="A sua Palavra-passe" style="width: 100%; padding-right: 45px;">
+                    <button type="button" id="toggle-password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #666;" title="Mostrar/Ocultar Palavra-passe">
+                        <svg id="eye-off-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        <svg id="eye-on-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+                <button id="btn-login" class="mode-btn" style="padding: 10px;">Entrar</button>
+                <button id="btn-register" class="mode-btn" style="padding: 10px; background: #1e1e24;">Criar Conta</button>
+                <button id="btn-guest" class="action-btn" style="padding: 10px; margin-top: 5px;">Jogar sem salvar (Visitante)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ecrã Inicial de Seleção de Modo -->
+    <div id="start-screen" class="start-screen hidden">
+        <div class="start-content">
+            <div class="start-title">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Pokébola" class="pokeball-spin">
+                <h1>Pokéguess</h1>
+            </div>
+            <p>Selecione a dificuldade do seu desafio:</p>
+            <div class="mode-buttons">
+                <button id="btn-mode-classic" class="mode-btn">
+                    <h3>Modo Clássico</h3>
+                    <p>1025 Pokémon Base</p>
+                </button>
+                <button id="btn-mode-expanded" class="mode-btn hardcore">
+                    <h3>Modo Absoluto</h3>
+                    <p>Base + Megas, G-Max e Regionais (+1300)</p>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Lateral -->
+    <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h2>Ajustes</h2>
+            <button id="close-sidebar" class="close-sidebar-btn">&times;</button>
+        </div>
+        <div class="sidebar-content" style="overflow-y: auto; max-height: calc(100vh - 70px); padding-right: 5px;">
+            <button id="btn-profile" class="action-btn sidebar-btn" style="background:#3b82f6; color:white; border-color:#1d4ed8;">👤 Perfil do Treinador</button>
+            <button id="btn-main-menu" class="action-btn sidebar-btn" style="background:#ff5252; color:white; border-color:#b71c1c;">Sair para o Menu</button>
+            <button id="btn-reset" class="action-btn sidebar-btn">Reiniciar Partida</button>
+            <button id="btn-reveal" class="action-btn sidebar-btn">Revelar Faltantes</button>
+            <button id="btn-trophies" class="action-btn trophy-btn sidebar-btn">🏆 Troféus</button>
+            
+            <div class="toggle-container sidebar-toggle">
+                <input type="checkbox" id="toggle-help">
+                <label for="toggle-help">Ajuda de Nomes</label>
+            </div>
+            <div class="toggle-container sidebar-toggle">
+                <input type="checkbox" id="toggle-silhouettes">
+                <label for="toggle-silhouettes">Modo Silhuetas</label>
+            </div>
+            <div class="toggle-container sidebar-toggle">
+                <input type="checkbox" id="toggle-shiny">
+                <label for="toggle-shiny">Versões Shiny</label>
+            </div>
+        </div>
+    </aside>
+
+    <!-- O Jogo -->
+    <div id="game-wrapper" class="hidden">
+        <header class="classic-mode">
+            <button id="menu-btn" class="pokedex-lens" title="Abrir Menu de Opções"></button>
+
+            <div class="header-top">
+                <div class="title-container">
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Pokébola" class="pokeball-icon">
+                    <h1 id="game-title-header">Pokéguess</h1>
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Pokébola" class="pokeball-icon">
+                </div>
+            </div>
+            
+            <div class="counters-wrapper">
+                <div id="counter" class="counter discovered-counter">Descobertos: 0 / 0</div>
+                <div id="timer" class="timer">00:00</div>
+                <button id="btn-pause-resume" class="pure-icon-btn" title="Pausar / Retomar Jogo">❚❚</button>
+            </div>
+
+            <div class="controls">
+                <div class="input-wrapper">
+                    <input type="text" id="guess-input" placeholder="Digite o nome de um Pokémon..." autocomplete="off">
+                    <ul id="suggestions" class="suggestions hidden"></ul>
+                </div>
+
+                <select id="gen-filter">
+                    <option value="all">Todas as Gerações</option>
+                    <option value="1">Geração 1 (Kanto)</option>
+                    <option value="2">Geração 2 (Johto)</option>
+                    <option value="3">Geração 3 (Hoenn)</option>
+                    <option value="4">Geração 4 (Sinnoh)</option>
+                    <option value="5">Geração 5 (Unova)</option>
+                    <option value="6">Geração 6 (Kalos)</option>
+                    <option value="7">Geração 7 (Alola)</option>
+                    <option value="8">Geração 8 (Galar)</option>
+                    <option value="9">Geração 9 (Paldea)</option>
+                </select>
+                <select id="type-filter">
+                    <option value="all">Todos os Tipos</option>
+                </select>
+            </div>
+        </header>
+
+        <main id="pokedex-container">
+            <div id="loading">A carregar a Base de Dados...<br>Isto acontece apenas na primeira vez!</div>
+        </main>
+    </div>
+
+    <!-- Modal de Troféus -->
+    <div id="trophies-modal" class="modal hidden">
+        <div class="modal-content">
+            <span id="close-modal" class="close-btn">&times;</span>
+            <h2 class="modal-title">🏆 Galeria de Conquistas</h2>
+            <!-- Contador de Conquistas Adicionado -->
+            <div id="trophy-counter-display" style="text-align: center; font-size: 14px; font-weight: 600; color: #f6d365; margin-bottom: 5px;">Conquistas Desbloqueadas: 0 / 0</div>
+            <p id="trophy-status-msg" class="trophy-status">Modo Platinador Ativo: Não revele nenhum Pokémon!</p>
+            <div id="trophies-grid" class="trophies-grid"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Perfil do Treinador -->
+    <div id="profile-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 400px;">
+            <span id="close-profile-modal" class="close-btn">&times;</span>
+            <h2 class="modal-title">👤 Perfil do Treinador</h2>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                <label style="font-size: 12px; color: #ccc;">E-mail da Conta:</label>
+                <input type="email" id="profile-email" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                
+                <label style="font-size: 12px; color: #ccc;">Nova Palavra-passe (opcional):</label>
+                <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                    <input type="password" id="profile-password" placeholder="Deixe em branco para não alterar" style="width: 100%; padding: 8px; padding-right: 45px; border-radius: 4px; border: 1px solid #ccc;">
+                    <button type="button" id="toggle-profile-password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #666;" title="Mostrar/Ocultar Palavra-passe">
+                        <svg id="profile-eye-off-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        <svg id="profile-eye-on-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                </div>
+                
+                <button id="btn-update-profile" class="mode-btn" style="padding: 10px; margin-top: 10px;">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mascote: Enfermeira Joy -->
+    <div id="joy-container" class="joy-container hidden" style="z-index: 9999; position: fixed; bottom: 20px; right: 20px; display: flex; align-items: flex-end; gap: 15px;">
+        <div class="joy-bubble" style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 250px; position: relative;">
+            <p id="joy-text" style="color: #333; font-size: 14px; margin-bottom: 10px;"></p>
+            <button id="joy-next-btn" style="background: #ff5252; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">Continuar ▼</button>
+        </div>
+        <img src="joy.png" alt="Enfermeira Joy" class="joy-img" style="height: 210px; object-fit: contain;">
+    </div>
+
+    <!-- Notificações -->
+    <div id="toast" class="toast hidden"></div>
+    <div id="achievement-toast" class="achievement-toast hidden">
+        <div class="ach-icon">🏆</div>
+        <div class="ach-text">
+            <strong>Conquista Desbloqueada!</strong>
+            <span id="ach-name">Nome do Troféu</span>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script src="script.js"></script>
+</body>
+</html>
